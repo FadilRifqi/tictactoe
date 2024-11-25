@@ -18,6 +18,7 @@ const Home: React.FC = () => {
   const [symbol, setSymbol] = useState<'X' | 'O'>('X');
   const [isMyTurn, setIsMyTurn] = useState<boolean>(false);
   const [winner, setWinner] = useState<string | null>(null);
+  const [draw, setDraw] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
 
   useEffect(() => {
@@ -61,11 +62,17 @@ const Home: React.FC = () => {
       if (checkWin(newBoard, symbol)) {
         setWinner(symbol);
         socket.emit('game-ended', { roomId, winner: symbol });
+      } else if (newBoard.every((cell) => cell !== null)) {
+        setDraw(true);
+        socket.emit('game-ended', { roomId, winner: null });
       }
     });
 
-    socket.on('game-ended', ({ winner }: { winner: string }) => {
+    socket.on('game-ended', ({ winner }: { winner: string | null }) => {
       setWinner(winner);
+      if (winner === null) {
+        setDraw(true);
+      }
     });
 
     return () => {
@@ -82,7 +89,7 @@ const Home: React.FC = () => {
   };
 
   const makeMove = (index: number) => {
-    if (!isMyTurn || board[index] || winner) return;
+    if (!isMyTurn || board[index] || winner || draw) return;
     const newBoard = [...board];
     newBoard[index] = symbol;
     setBoard(newBoard);
@@ -92,6 +99,9 @@ const Home: React.FC = () => {
     if (checkWin(newBoard, symbol)) {
       setWinner(symbol);
       socket.emit('game-ended', { roomId, winner: symbol });
+    } else if (newBoard.every((cell) => cell !== null)) {
+      setDraw(true);
+      socket.emit('game-ended', { roomId, winner: null });
     }
   };
 
@@ -115,6 +125,7 @@ const Home: React.FC = () => {
   const resetGame = () => {
     setBoard(Array(9).fill(null));
     setWinner(null);
+    setDraw(false);
     setIsMyTurn(false);
     setRoomId(null);
     setSymbol('X');
@@ -144,6 +155,18 @@ const Home: React.FC = () => {
             <>
               <p className="text-2xl font-semibold text-green-600 mt-4">
                 {winner} wins!
+              </p>
+              <button
+                onClick={resetGame}
+                className="px-8 py-4 mt-4 bg-gradient-to-r from-lime-200 to-pink-200 rounded-lg border border-gray-300 shadow-lg text-2xl text-gray-800 hover:bg-opacity-80 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                Play Again
+              </button>
+            </>
+          ) : draw ? (
+            <>
+              <p className="text-2xl font-semibold text-yellow-600 mt-4">
+                It's a draw!
               </p>
               <button
                 onClick={resetGame}
